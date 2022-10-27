@@ -20,7 +20,7 @@ Currently, the only filter is by the join time to kill the bot hoards.
 | channel_id          |         | channel or supergroup id, without -100 part, _required_                                      |
 | ban_to              |         | the end of the time from which newly joined users will be banned, unix timestamp, _required_ |
 | ban_search_duration |         | amount of time before the ban_to for which we need to ban users, _required_                  |
-| not_dry_run         | `false` | show what would be done, but don't actually do anything                                      |
+| not_dry_run         | `false` | unless this is set, only show what would be done, but don't actually do anything             |
 | dbg                 | `false` | debug mode                                                                                   |
 
 
