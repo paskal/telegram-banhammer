@@ -175,8 +175,8 @@ func getChannel(ctx context.Context, api *tg.Client, channelID int64) (*tg.Chann
 
 func setupLog(dbg bool) {
 	if dbg {
-		log.Setup(log.Debug, log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces, log.StackTraceOnError)
+		log.Setup(log.Debug, log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
 		return
 	}
-	log.Setup(log.Msec, log.LevelBraces, log.StackTraceOnError)
+	log.Setup(log.Msec, log.LevelBraces)
 }

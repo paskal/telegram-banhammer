@@ -21,8 +21,8 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 		return
 	}
 
-	for _, userID := range userIDs {
-		log.Printf("[INFO] Banning and kicking user %d forever", userID)
+	for i, userID := range userIDs {
+		log.Printf("[DEBUG] Banning and kicking user %d forever", userID)
 		_, err = api.ChannelsEditBanned(ctx, &tg.ChannelsEditBannedRequest{
 			Channel:     channel.AsInput(),
 			Participant: &tg.InputPeerUser{UserID: userID},
@@ -45,7 +45,7 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 		if err != nil {
 			log.Printf("[ERROR] error banning user %d: %v", userID, err)
 		}
-		log.Printf("[INFO] Deleting messages by the user %d", userID)
+		log.Printf("[DEBUG] Deleting messages by the user %d", userID)
 		_, err = api.ChannelsDeleteParticipantHistory(ctx, &tg.ChannelsDeleteParticipantHistoryRequest{
 			Channel:     channel.AsInput(),
 			Participant: &tg.InputPeerUser{UserID: userID},
@@ -53,6 +53,7 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 		if err != nil {
 			log.Printf("[ERROR] error deleting messages by the user %d: %v", userID, err)
 		}
+		log.Printf("[INFO] Done processing user #%d out of %d", i+1, len(userIDs))
 	}
 }
 
