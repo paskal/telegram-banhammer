@@ -54,12 +54,10 @@ func main() {
 
 	// logging for Telegram library
 	if opts.Dbg {
-		logger, err := zap.NewProduction()
-		if err != nil {
-			log.Fatalf("[ERROR] can't create zap logger for Telegram client: %v", err)
+		if logger, err := zap.NewProduction(); err == nil {
+			defer logger.Sync()
+			telegramOptions.Logger = logger
 		}
-		defer logger.Sync()
-		telegramOptions.Logger = logger
 	}
 
 	client := telegram.NewClient(
