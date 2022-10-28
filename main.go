@@ -13,6 +13,7 @@ import (
 	"github.com/gotd/td/telegram/auth"
 	"github.com/gotd/td/tg"
 	"github.com/jessevdk/go-flags"
+	"go.uber.org/zap"
 	"golang.org/x/term"
 )
 
@@ -49,10 +50,22 @@ func main() {
 	waiter := floodwait.NewWaiter().WithMaxRetries(maxRetries).WithMaxWait(maxWait)
 	go waiter.Run(ctx)
 
+	telegramOptions := telegram.Options{Middlewares: []telegram.Middleware{waiter}}
+
+	// logging for Telegram library
+	if opts.Dbg {
+		logger, err := zap.NewProduction()
+		if err != nil {
+			log.Fatalf("[ERROR] can't create zap logger for Telegram client: %v", err)
+		}
+		defer logger.Sync()
+		telegramOptions.Logger = logger
+	}
+
 	client := telegram.NewClient(
 		opts.AppID,
 		opts.AppHash,
-		telegram.Options{Middlewares: []telegram.Middleware{waiter}},
+		telegramOptions,
 	)
 	if err := client.Run(ctx, func(ctx context.Context) error {
 		api := client.API()
@@ -72,8 +85,8 @@ func main() {
 		banFrom := banTo.Add(-opts.BanSearchDuration)
 		log.Printf("[INFO] looking for users to ban who joined in %s between %s and %s", opts.BanSearchDuration, banFrom, banTo)
 
-		// Channel with users to ban
-		var nottyList chan *tg.ChannelParticipant
+		// Buffered channel with users to ban
+		nottyList := make(chan *tg.ChannelParticipant, 10)
 
 		go func() {
 			e := getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, nottyList)

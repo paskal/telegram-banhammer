@@ -7,6 +7,7 @@ require (
 	github.com/gotd/contrib v0.13.0
 	github.com/gotd/td v0.70.1
 	github.com/jessevdk/go-flags v1.5.0
+	go.uber.org/zap v1.23.0
 	golang.org/x/term v0.1.0
 )
 
@@ -23,7 +24,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.11.1 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	go.uber.org/zap v1.23.0 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/net v0.1.0 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
