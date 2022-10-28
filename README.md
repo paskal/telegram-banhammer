@@ -26,14 +26,16 @@ Currently, the only filter is by the join time to kill the bot hoards.
 
 ## How to run
 
-To get the channel ID see https://gist.github.com/mraaroncruz/e76d19f7d61d59419002db54030ebe35, and use it without `-100` part in the beginning.
+To get the channel ID, please see https://gist.github.com/mraaroncruz/e76d19f7d61d59419002db54030ebe35, and use it without the `-100` part in the beginning.
 
 To get the AppID and AppHash, please see https://core.telegram.org/api/obtaining_api_id.
+
+After gathering the results, they will be written to a file with the current timestamp in the `ban` directory: no bans will be issued. Feel free to check the results (and remove users you think shouldn't be banned) and rerun the program with `--not-dry-run` flag.
 
 ### Docker (recommended)
 
 ```bash
-docker run paskal/telegram-banhammer:master /srv/telegram-banhammer --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_if_present" --channel_id 1234567 --ban_to 1666887600 --ban_search_duration 3m
+docker run --volume=./ban:/srv/ban paskal/telegram-banhammer:master /srv/telegram-banhammer --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_if_present" --channel_id 1234567 --ban_to 1666887600 --ban_search_duration 3m
 ```
 
 ### Locally
