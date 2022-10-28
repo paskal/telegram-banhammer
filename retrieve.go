@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pkgz/lgr"
+	log "github.com/go-pkgz/lgr"
 	"github.com/gotd/td/tg"
 )
+
+const participantsRequestLimit = 100 // should be between 1 and 100
 
 // banUserInfo stores all the information about a user to ban
 type banUserInfo struct {
@@ -28,7 +30,7 @@ type banUserInfo struct {
 func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.Channel, banToUnixtime int64, banSearchDuration time.Duration) {
 	banTo := time.Unix(banToUnixtime, 0)
 	banFrom := banTo.Add(-banSearchDuration)
-	lgr.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", banSearchDuration, banFrom, banTo)
+	log.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", banSearchDuration, banFrom, banTo)
 
 	// Buffered channel with users to ban
 	nottyList := make(chan *tg.ChannelParticipant, participantsRequestLimit)
@@ -37,7 +39,7 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 		err := getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, nottyList)
 		close(nottyList)
 		if err != nil {
-			lgr.Printf("[ERROR] Error getting channel members: %v", err)
+			log.Printf("[ERROR] Error getting channel members: %v", err)
 		}
 	}()
 
@@ -45,9 +47,9 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 
 	usersToBan := getUsersInfo(ctx, api, channel, nottyList)
 	if err := writeUsersToFile(usersToBan, fileName); err != nil {
-		lgr.Printf("[ERROR] Error writing users to ban to file: %v", err)
+		log.Printf("[ERROR] Error writing users to ban to file: %v", err)
 	} else {
-		lgr.Printf("[INFO] Success, users to ban written to %s", fileName)
+		log.Printf("[INFO] Success, users to ban written to %s", fileName)
 	}
 }
 
@@ -68,7 +70,7 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 			return fmt.Errorf("error getting list of channel participants: %w", err)
 		}
 		if len(participants.(*tg.ChannelsChannelParticipants).Participants) == 0 {
-			lgr.Printf("[INFO] No more users to process")
+			log.Printf("[INFO] No more users to process")
 			break
 		}
 		for _, participant := range participants.(*tg.ChannelsChannelParticipants).Participants {
@@ -85,10 +87,10 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 			case *tg.ChannelParticipantBanned:
 			case *tg.ChannelParticipantLeft:
 			default:
-				lgr.Printf("[WARN] Unknown participant type: %T, %v", v, participant)
+				log.Printf("[WARN] Unknown participant type: %T, %v", v, participant)
 			}
 		}
-		lgr.Printf("[INFO] Processed %d users", offset)
+		log.Printf("[INFO] Processed %d users", offset)
 	}
 	return nil
 }
@@ -97,14 +99,14 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 func writeUsersToFile(users []banUserInfo, fileName string) error {
 	file, err := os.Create(fileName)
 	if err != nil {
-		lgr.Printf("[ERROR] Error creating file %s: %v", fileName, err)
-		lgr.Printf("[INFO] Writing results to stdout instead")
+		log.Printf("[ERROR] Error creating file %s: %v", fileName, err)
+		log.Printf("[INFO] Writing results to stdout instead")
 		file = os.Stdout
 	} else {
 		defer func() {
 			e := file.Close()
 			if e != nil {
-				lgr.Printf("[ERROR] Error closing file %s: %v", fileName, e)
+				log.Printf("[ERROR] Error closing file %s: %v", fileName, e)
 			}
 		}()
 	}
@@ -148,7 +150,7 @@ func getUsersInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, user
 		userInfoToStore := getSingleUserStoreInfo(ctx, api, channel, userToBan)
 		members = append(members, userInfoToStore)
 	}
-	lgr.Printf("[INFO] %d users found", len(members))
+	log.Printf("[INFO] %d users found", len(members))
 	// sort members by joined date
 	sort.Slice(members, func(i, j int) bool {
 		return members[i].joined.Before(members[j].joined)
@@ -187,7 +189,7 @@ func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Cha
 	} else {
 		userInfoStr += ", no message found"
 	}
-	lgr.Printf("[INFO] %s", userInfoStr)
+	log.Printf("[INFO] %s", userInfoStr)
 	return userInfoToStore
 }
 
@@ -212,7 +214,6 @@ func getTelegramUser(ctx context.Context, api *tg.Client, userID int64) *tg.User
 // getSingeUserMessage retrieves single user (last?) message from given channel from Telegram API
 func getSingeUserMessage(ctx context.Context, api *tg.Client, channel *tg.Channel, userToBan *tg.ChannelParticipant) string {
 	var message string
-	var rawMessages []tg.MessageClass
 	messages, err := api.MessagesSearch(ctx, &tg.MessagesSearchRequest{
 		FromID: &tg.InputPeerUser{UserID: userToBan.UserID},
 		Peer:   channel.AsInputPeer(),
@@ -220,12 +221,13 @@ func getSingeUserMessage(ctx context.Context, api *tg.Client, channel *tg.Channe
 		Limit:  1,
 	})
 	if err != nil {
-		lgr.Printf("[ERROR] Error retrieving user %d message: %v", userToBan.UserID, err)
+		log.Printf("[ERROR] Error retrieving user %d message: %v", userToBan.UserID, err)
 		return ""
 	}
 	if messages.Zero() {
 		return ""
 	}
+	var rawMessages []tg.MessageClass
 	switch v := messages.(type) {
 	case *tg.MessagesMessages:
 		rawMessages = v.Messages

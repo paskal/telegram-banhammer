@@ -19,23 +19,23 @@ import (
 )
 
 type options struct {
-	AppID             int           `long:"appid" description:"AppID, https://core.telegram.org/api/obtaining_api_id" required:"true"`
-	AppHash           string        `long:"apphash" description:"AppHash, https://core.telegram.org/api/obtaining_api_id" required:"true"`
-	Phone             string        `long:"phone" description:"Telegram phone of the channel admin" required:"true"`
-	Password          string        `long:"password" description:"password, if set for the admin"`
-	ChannelID         int64         `long:"channel_id" description:"channel or supergroup id, without -100 part, https://gist.github.com/mraaroncruz/e76d19f7d61d59419002db54030ebe35" required:"true"`
-	BanToTimestamp    int64         `long:"ban_to_timestamp" description:"the end of the time from which newly joined users will be banned, unix timestamp"`
-	BanSearchDuration time.Duration `long:"ban_search_duration" description:"amount of time before the ban_to for which we need to ban users"`
+	AppID              int           `long:"appid" description:"AppID, https://core.telegram.org/api/obtaining_api_id" required:"true"`
+	AppHash            string        `long:"apphash" description:"AppHash, https://core.telegram.org/api/obtaining_api_id" required:"true"`
+	Phone              string        `long:"phone" description:"Telegram phone of the channel admin" required:"true"`
+	Password           string        `long:"password" description:"password, if set for the admin"`
+	ChannelID          int64         `long:"channel_id" description:"channel or supergroup id, without -100 part, https://gist.github.com/mraaroncruz/e76d19f7d61d59419002db54030ebe35" required:"true"`
+	BanToTimestamp     int64         `long:"ban_to_timestamp" description:"the end of the time from which newly joined users will be banned, unix timestamp"`
+	BanSearchDuration  time.Duration `long:"ban_search_duration" description:"amount of time before the ban_to for which we need to ban users"`
+	BanAndKickFilePath string        `long:"ban_and_kick_filepath" description:"set this option to path to text file with users clean up their messages, ban and kick them"`
 
-	BanAndKick string `long:"ban_and_kick" description:"set this option to path to text file with users clean up their messages, ban and kick them"`
-	Dbg        bool   `long:"dbg" description:"debug mode"`
+	Dbg bool `long:"dbg" description:"debug mode"`
 }
 
 var revision = "local"
 
+// settings for Telegram API floodwait
 const maxRetries = 3
 const maxWait = time.Minute * 5
-const participantsRequestLimit = 100 // should be between 1 and 100
 
 func main() {
 	var opts options
@@ -55,7 +55,7 @@ func main() {
 	waiter := floodwait.NewWaiter().WithMaxRetries(maxRetries).WithMaxWait(maxWait)
 	go func() {
 		err := waiter.Run(ctx)
-		if err != nil {
+		if err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("[WARN] Waiter middleware failed: %v", err)
 		}
 	}()
@@ -94,7 +94,7 @@ func main() {
 			return err
 		}
 
-		if opts.BanAndKick == "" {
+		if opts.BanAndKickFilePath == "" {
 			if opts.BanToTimestamp == 0 {
 				log.Printf("[ERROR] ban_to must be set when searching for users")
 				return nil
@@ -105,7 +105,7 @@ func main() {
 			}
 			searchAndStoreUsersToBan(ctx, api, channel, opts.BanToTimestamp, opts.BanSearchDuration)
 		} else {
-			banAndKickUsers(ctx, api, channel, opts.BanAndKick)
+			banAndKickUsers(ctx, api, channel, opts.BanAndKickFilePath)
 		}
 
 		return nil
@@ -114,11 +114,8 @@ func main() {
 	}
 }
 
-// bans users from given file
-func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, kick string) {
-
-}
-
+// ensureDirectoryExists ensures the directory exists, creates it if it doesn't,
+// and returns error in case of problem creating it or if specified path is not a directory
 func ensureDirectoryExists(dir string) error {
 	if s, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
 		e := os.Mkdir(dir, os.ModePerm)
@@ -131,6 +128,8 @@ func ensureDirectoryExists(dir string) error {
 	return nil
 }
 
+// authenticate the user. If password is not empty, it will be used.
+// Second factor code would be requested in any case.
 func authenticate(ctx context.Context, phone, password string, client *telegram.Client) error {
 	// Function for getting second factor code from stdin
 	codePrompt := func(ctx context.Context, sentCode *tg.AuthSentCode) (string, error) {
