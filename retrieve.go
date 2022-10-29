@@ -51,6 +51,10 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 	fileName := fmt.Sprintf("./ban/%s.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
 	usersToBan := getUsersInfo(ctx, api, channel, nottyList, params.ignoreMessages)
+	if len(usersToBan) == 0 {
+		log.Printf("[INFO] No users to ban found")
+		return
+	}
 	if err := writeUsersToFile(usersToBan, fileName); err != nil {
 		log.Printf("[ERROR] Error writing users to ban to file: %v", err)
 	} else {
@@ -82,7 +86,7 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 			log.Printf("[ERROR] Error getting channel participants: %v", err)
 			break
 		}
-		if participants.Zero() {
+		if len(participants.(*tg.ChannelsChannelParticipants).Participants) == 0 {
 			log.Printf("[INFO] No more users to process")
 			break
 		}
