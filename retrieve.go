@@ -238,6 +238,10 @@ func getSingeUserMessage(ctx context.Context, api *tg.Client, channel *tg.Channe
 			message = v.GetMessage()
 		case *tg.MessageService:
 			message = v.String()
+			if _, ok := v.GetAction().(*tg.MessageActionChatAddUser); ok {
+				message = "[system] joining the channel"
+			}
+			log.Printf("[INFO] Message found: %+v", v)
 		}
 	}
 
