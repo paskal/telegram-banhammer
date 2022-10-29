@@ -31,8 +31,8 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 	fileName := fmt.Sprintf("./ban/%s.unprocessed.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
 	usersToBan := make([]banUserInfo, len(users[stoppedIndex:]))
-	for _, user := range users[stoppedIndex:] {
-		usersToBan = append(usersToBan, banUserInfo{userID: user.UserID, accessHash: user.AccessHash})
+	for i, user := range users[stoppedIndex:] {
+		usersToBan[i] = banUserInfo{userID: user.UserID, accessHash: user.AccessHash}
 	}
 	if e := writeUsersToFile(usersToBan, fileName); err != nil {
 		log.Printf("[ERROR] Error writing rest of users to ban after context cancel to file: %v", e)
