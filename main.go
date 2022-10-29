@@ -45,6 +45,9 @@ const maxRetries = 3
 // after banning 300 users in a row, Telegram API gives you cooldown timeout of ~12 minutes
 const maxWait = time.Minute * 15
 
+// that tick value allows ban not being painfully slow after 300 users
+const tick = time.Second
+
 func main() {
 	var opts options
 	if _, err := flags.Parse(&opts); err != nil {
@@ -75,7 +78,7 @@ func main() {
 		}
 	}()
 	// prevent getting banned by floodwait
-	waiter := floodwait.NewWaiter().WithMaxRetries(maxRetries).WithMaxWait(maxWait)
+	waiter := floodwait.NewWaiter().WithMaxRetries(maxRetries).WithMaxWait(maxWait).WithTick(tick)
 	go func() {
 		err := waiter.Run(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
