@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"syscall"
 	"time"
 
@@ -52,7 +53,22 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+
+	// catch CTRL+C, will cancel the context and cause program to write what's processed to disk
+	// https://medium.com/@matryer/make-ctrl-c-cancel-the-context-context-bd006a8ad6ff
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	defer func() {
+		signal.Stop(c)
+		cancel()
+	}()
+	go func() {
+		select {
+		case <-c:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
 	// prevent getting banned by floodwait
 	waiter := floodwait.NewWaiter().WithMaxRetries(maxRetries).WithMaxWait(maxWait)
 	go func() {
