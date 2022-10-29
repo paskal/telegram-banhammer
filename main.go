@@ -88,7 +88,7 @@ func main() {
 
 	telegramOptions := telegram.Options{
 		Middlewares:    []telegram.Middleware{waiter},
-		SessionStorage: &telegram.FileSessionStorage{Path: "./ban/session.json"},
+		SessionStorage: &telegram.FileSessionStorage{Path: fmt.Sprintf("./ban/%s.json", opts.Phone)},
 	}
 
 	// logging for Telegram library
