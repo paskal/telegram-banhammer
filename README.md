@@ -40,7 +40,7 @@ After gathering the results, they will be written to a file with the current tim
 #### Docker (recommended)
 
 ```bash
-docker run --volume=./ban:/srv/ban paskal/telegram-banhammer:master /srv/telegram-banhammer --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_if_present" --channel_id 1234567 --ban_to 1666887600 --ban_search_duration 3m
+docker run -it --volume=$(pwd)/ban:/srv/ban paskal/telegram-banhammer:master /srv/telegram-banhammer --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_if_present" --channel_id 1234567 --ban_to 1666887600 --ban_search_duration 3m
 ```
 
 #### Locally
@@ -56,7 +56,7 @@ go run ./... --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_
 #### Docker (recommended)
 
 ```bash
-docker run --volume=./ban:/srv/ban paskal/telegram-banhammer:master /srv/telegram-banhammer --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_if_present" --ban_and_kick_filepath ban/telegram-banhammer-2022-10-28T22-03-40.users.csv
+docker run -it --volume=$(pwd)/ban:/srv/ban paskal/telegram-banhammer:master /srv/telegram-banhammer --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_if_present" --ban_and_kick_filepath ban/telegram-banhammer-2022-10-28T22-03-40.users.csv
 ```
 
 #### Locally
