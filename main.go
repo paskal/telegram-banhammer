@@ -26,6 +26,7 @@ type options struct {
 	ChannelID          int64         `long:"channel_id" description:"channel or supergroup id, without -100 part, https://gist.github.com/mraaroncruz/e76d19f7d61d59419002db54030ebe35" required:"true"`
 	BanToTimestamp     int64         `long:"ban_to_timestamp" description:"the end of the time from which newly joined users will be banned, unix timestamp"`
 	BanSearchDuration  time.Duration `long:"ban_search_duration" description:"amount of time before the ban_to for which we need to ban users"`
+	BanSearchLimit     int           `long:"ban_search_limit" description:"limit of users to check for ban, 0 is unlimited"`
 	BanAndKickFilePath string        `long:"ban_and_kick_filepath" description:"set this option to path to text file with users clean up their messages, ban and kick them"`
 
 	Dbg bool `long:"dbg" description:"debug mode"`
@@ -103,7 +104,7 @@ func main() {
 				log.Printf("[ERROR] ban_search_duration must be non-zero when searching for users")
 				return nil
 			}
-			searchAndStoreUsersToBan(ctx, api, channel, opts.BanToTimestamp, opts.BanSearchDuration)
+			searchAndStoreUsersToBan(ctx, api, channel, opts.BanToTimestamp, opts.BanSearchDuration, opts.BanSearchLimit)
 		} else {
 			banAndKickUsers(ctx, api, channel, opts.BanAndKickFilePath)
 		}

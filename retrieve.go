@@ -33,21 +33,15 @@ type channelParticipantInfo struct {
 }
 
 // retrieves users by for given period and write them to file in ./ban directory
-func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.Channel, banToUnixtime int64, banSearchDuration time.Duration) {
-	banTo := time.Unix(banToUnixtime, 0)
-	banFrom := banTo.Add(-banSearchDuration)
-	log.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", banSearchDuration, banFrom, banTo)
+func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.Channel, searchEndUnixTime int64, searchDuration time.Duration, searchLimit int) {
+	banTo := time.Unix(searchEndUnixTime, 0)
+	banFrom := banTo.Add(-searchDuration)
+	log.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", searchDuration, banFrom, banTo)
 
 	// Buffered channel with users to ban
 	nottyList := make(chan channelParticipantInfo, participantsRequestLimit)
 
-	go func() {
-		err := getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, nottyList)
-		close(nottyList)
-		if err != nil {
-			log.Printf("[ERROR] Error getting channel members: %v", err)
-		}
-	}()
+	go getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, searchLimit, nottyList)
 
 	fileName := fmt.Sprintf("./ban/telegram-banhammer-%s.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
@@ -60,10 +54,15 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 }
 
 // getSingleUserStoreInfo retrieves userID and joined date for users in given period and pushes them to users channel,
+// closes provided channel before returning,
 // supposed to be run in goroutine
-func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, channel *tg.Channel, banFrom, banTo time.Time, users chan<- channelParticipantInfo) error {
+func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, channel *tg.Channel, banFrom, banTo time.Time, searchLimit int, users chan<- channelParticipantInfo) {
+	defer close(users)
 	var offset int
 	for {
+		if searchLimit != 0 && offset >= searchLimit {
+			break
+		}
 		participants, err := api.ChannelsGetParticipants(ctx,
 			&tg.ChannelsGetParticipantsRequest{
 				Channel: channel.AsInput(),
@@ -73,7 +72,8 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 			})
 		offset += participantsRequestLimit
 		if err != nil {
-			return fmt.Errorf("error getting list of channel participants: %w", err)
+			log.Printf("[ERROR] Error getting channel participants: %v", err)
+			break
 		}
 		if len(participants.(*tg.ChannelsChannelParticipants).Participants) == 0 {
 			log.Printf("[INFO] No more users to process")
@@ -100,7 +100,6 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 		}
 		log.Printf("[INFO] Processed %d users", offset)
 	}
-	return nil
 }
 
 // writeUsersToFile writes users to tab-separated csv file
