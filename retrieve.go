@@ -53,7 +53,7 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 
 	fileName := fmt.Sprintf("./ban/telegram-banhammer-%s.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
-	usersToBan := getUsersInfo(ctx, api, channel, nottyList)
+	usersToBan := getUsersInfo(ctx, api, channel, nottyList, params.ignoreMessages)
 	if err := writeUsersToFile(usersToBan, fileName); err != nil {
 		log.Printf("[ERROR] Error writing users to ban to file: %v", err)
 	} else {
@@ -155,7 +155,7 @@ func writeUsersToFile(users []banUserInfo, fileName string) error {
 }
 
 // getUsersInfo retrieves extended user info for every user in given channel, as well as single message sent by such user
-func getUsersInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, users <-chan channelParticipantInfo) []banUserInfo {
+func getUsersInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, users <-chan channelParticipantInfo, ignoreMessages bool) []banUserInfo {
 	var members []banUserInfo
 	// Do not check for ctx.Done() because then we could store existing data about the user as-is and write it to a file
 	// instead of dropping the information which we already retrieved. That is achieved by closing users channel.
@@ -164,7 +164,7 @@ func getUsersInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, user
 		if !ok {
 			break
 		}
-		userInfoToStore := getSingleUserStoreInfo(ctx, api, channel, userToBan)
+		userInfoToStore := getSingleUserStoreInfo(ctx, api, channel, userToBan, ignoreMessages)
 		members = append(members, userInfoToStore)
 	}
 	log.Printf("[INFO] %d users found", len(members))
@@ -176,7 +176,7 @@ func getUsersInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, user
 }
 
 // getSingleUserStoreInfo retrieves extended user information for given user and returns filled banUserInfo
-func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, userToBan channelParticipantInfo) banUserInfo {
+func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, userToBan channelParticipantInfo, ignoreMessages bool) banUserInfo {
 	joined := time.Unix(int64(userToBan.participantInfo.Date), 0)
 	userInfoToStore := banUserInfo{
 		userID: userToBan.participantInfo.UserID,
@@ -201,7 +201,10 @@ func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Cha
 	userInfoToStore.langCode = userToBan.info.LangCode
 	userInfoToStore.accessHash = userToBan.info.AccessHash
 
-	message := getSingeUserMessage(ctx, api, channel, userToBan.info.AsInputPeer())
+	var message string
+	if !ignoreMessages {
+		message = getSingeUserMessage(ctx, api, channel, userToBan.info.AsInputPeer())
+	}
 	if message != "" {
 		userInfoToStore.message = message
 		if len(message) > 80 {
