@@ -83,7 +83,10 @@ func main() {
 		}
 	}()
 
-	telegramOptions := telegram.Options{Middlewares: []telegram.Middleware{waiter}}
+	telegramOptions := telegram.Options{
+		Middlewares:    []telegram.Middleware{waiter},
+		SessionStorage: &telegram.FileSessionStorage{Path: "./ban/session.json"},
+	}
 
 	// logging for Telegram library
 	if opts.Dbg {
