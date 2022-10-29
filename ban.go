@@ -7,15 +7,14 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"time"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/gotd/td/tg"
 )
 
-// bans users from given file, cleans up their messages and kicks them afterwards
+// bans users from given file, cleans up their messages and kicks them afterwards.
+// in case of errors during the run, writes unprocessed errors back to the same file.
 func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, filePath string) {
-
 	users, err := readUserIDsFromCSV(filePath)
 	if err != nil {
 		log.Printf("[ERROR] error reading users from the file %s: %v", filePath, err)
@@ -31,21 +30,18 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 	if stoppedIndex == 0 {
 		log.Printf("[INFO] Canceled without processing any entries, restart the same command to ban users")
 	}
-	fileName := fmt.Sprintf("./ban/%s.unprocessed.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
 	usersToBan := make([]banUserInfo, len(users[stoppedIndex:]))
 	for i, user := range users[stoppedIndex:] {
 		usersToBan[i] = banUserInfo{userID: user.UserID, accessHash: user.AccessHash}
 	}
-	if e := writeUsersToFile(usersToBan, fileName); err != nil {
+	if e := writeUsersToFile(usersToBan, filePath); err != nil {
 		log.Printf("[ERROR] Error writing rest of users to ban after context cancel to file: %v", e)
 	} else {
-		log.Printf("[INFO] Success, rest of users (%d-%d) to ban after context cancel written to %s",
+		log.Printf("[INFO] Success, rest of users (%d-%d) to ban after context cancel written to the same file %s, restart the same command to ban users",
 			stoppedIndex,
 			len(users),
-			fileName)
-		log.Printf("[INFO] To continue, run the same command with the new filename:")
-		log.Printf("[INFO] --ban_and_kick_filepath %s", fileName)
+			filePath)
 	}
 }
 

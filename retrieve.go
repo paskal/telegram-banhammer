@@ -22,7 +22,6 @@ type banUserInfo struct {
 	username   string
 	firstName  string
 	lastName   string
-	langCode   string
 }
 
 type channelParticipantInfo struct {
@@ -158,7 +157,6 @@ func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Cha
 	userInfoToStore.username = userToBan.info.Username
 	userInfoToStore.firstName = userToBan.info.FirstName
 	userInfoToStore.lastName = userToBan.info.LastName
-	userInfoToStore.langCode = userToBan.info.LangCode
 	userInfoToStore.accessHash = userToBan.info.AccessHash
 
 	var message string

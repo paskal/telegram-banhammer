@@ -86,6 +86,7 @@ func main() {
 		}
 	}()
 
+	// credentials are stored per phone number
 	telegramOptions := telegram.Options{
 		Middlewares:    []telegram.Middleware{waiter},
 		SessionStorage: &telegram.FileSessionStorage{Path: fmt.Sprintf("./ban/%s.json", opts.Phone)},
@@ -123,25 +124,28 @@ func main() {
 			return err
 		}
 
-		if opts.BanAndKickFilePath == "" {
-			if opts.BanToTimestamp == 0 {
-				log.Printf("[ERROR] ban_to must be set when searching for users")
-				return nil
-			}
-			if opts.BanSearchDuration.Seconds() <= 0 {
-				log.Printf("[ERROR] ban_search_duration must be non-zero when searching for users")
-				return nil
-			}
-			searchAndStoreUsersToBan(ctx, api, channel, searchParams{
-				endUnixTime:    opts.BanToTimestamp,
-				duration:       opts.BanSearchDuration,
-				offset:         opts.BanSearchOffset,
-				limit:          opts.BanSearchLimit,
-				ignoreMessages: opts.SearchIgnoreMessages,
-			})
-		} else {
+		// ban users case
+		if opts.BanAndKickFilePath != "" {
 			banAndKickUsers(ctx, api, channel, opts.BanAndKickFilePath)
+			return nil
 		}
+
+		// retrieve users to ban case
+		if opts.BanToTimestamp == 0 {
+			log.Printf("[ERROR] ban_to must be set when searching for users")
+			return nil
+		}
+		if opts.BanSearchDuration.Seconds() <= 0 {
+			log.Printf("[ERROR] ban_search_duration must be non-zero when searching for users")
+			return nil
+		}
+		searchAndStoreUsersToBan(ctx, api, channel, searchParams{
+			endUnixTime:    opts.BanToTimestamp,
+			duration:       opts.BanSearchDuration,
+			offset:         opts.BanSearchOffset,
+			limit:          opts.BanSearchLimit,
+			ignoreMessages: opts.SearchIgnoreMessages,
+		})
 
 		return nil
 	}); err != nil {
@@ -224,7 +228,7 @@ func writeUsersToFile(users []banUserInfo, fileName string) error {
 		}()
 	}
 
-	data := [][]string{{"joined", "userID", "access_hash", "username", "firstName", "lastName", "langCode", "message"}}
+	data := [][]string{{"joined", "userID", "access_hash", "username", "firstName", "lastName", "message"}}
 
 	for _, user := range users {
 		data = append(data, []string{
@@ -234,7 +238,6 @@ func writeUsersToFile(users []banUserInfo, fileName string) error {
 			user.username,                                 // username
 			strings.ReplaceAll(user.firstName, "\t", " "), // firstName
 			strings.ReplaceAll(user.lastName, "\t", " "),  // lastName
-			user.langCode,                                 // langCode
 			strings.ReplaceAll(user.message, "\t", " "),   // message
 		})
 	}
