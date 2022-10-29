@@ -32,16 +32,24 @@ type channelParticipantInfo struct {
 	info            *tg.User
 }
 
+type searchParams struct {
+	endUnixTime    int64
+	duration       time.Duration
+	offset         int
+	limit          int
+	ignoreMessages bool
+}
+
 // retrieves users by for given period and write them to file in ./ban directory
-func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.Channel, searchEndUnixTime int64, searchDuration time.Duration, offset, searchLimit int) {
-	banTo := time.Unix(searchEndUnixTime, 0)
-	banFrom := banTo.Add(-searchDuration)
-	log.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", searchDuration, banFrom, banTo)
+func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.Channel, params searchParams) {
+	banTo := time.Unix(params.endUnixTime, 0)
+	banFrom := banTo.Add(-params.duration)
+	log.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", params.duration, banFrom, banTo)
 
 	// Buffered channel with users to ban
 	nottyList := make(chan channelParticipantInfo, participantsRequestLimit)
 
-	go getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, offset, searchLimit, nottyList)
+	go getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, params.offset, params.limit, nottyList)
 
 	fileName := fmt.Sprintf("./ban/telegram-banhammer-%s.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
