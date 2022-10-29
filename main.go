@@ -39,7 +39,9 @@ var revision = "local"
 
 // settings for Telegram API floodwait
 const maxRetries = 3
-const maxWait = time.Minute * 5
+
+// after banning 300 users in a row, Telegram API gives you cooldown timeout of ~12 minutes
+const maxWait = time.Minute * 15
 
 func main() {
 	var opts options
