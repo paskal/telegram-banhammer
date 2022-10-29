@@ -28,6 +28,9 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 	if stoppedIndex == len(users)-1 {
 		return
 	}
+	if stoppedIndex == 0 {
+		log.Printf("[INFO] Canceled without processing any entries, restart the same command to ban users")
+	}
 	fileName := fmt.Sprintf("./ban/%s.unprocessed.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
 	usersToBan := make([]banUserInfo, len(users[stoppedIndex:]))
