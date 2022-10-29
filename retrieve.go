@@ -75,7 +75,7 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 			log.Printf("[ERROR] Error getting channel participants: %v", err)
 			break
 		}
-		if len(participants.(*tg.ChannelsChannelParticipants).Participants) == 0 {
+		if participants.Zero() {
 			log.Printf("[INFO] No more users to process")
 			break
 		}
@@ -241,7 +241,6 @@ func getSingeUserMessage(ctx context.Context, api *tg.Client, channel *tg.Channe
 			if _, ok := v.GetAction().(*tg.MessageActionChatAddUser); ok {
 				message = "[system] joining the channel"
 			}
-			log.Printf("[INFO] Message found: %+v", v)
 		}
 	}
 
