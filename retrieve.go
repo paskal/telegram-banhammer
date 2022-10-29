@@ -13,7 +13,7 @@ import (
 	"github.com/gotd/td/tg"
 )
 
-const participantsRequestLimit = 100 // should be between 1 and 100
+const messagesRequestLimit = 100 // should be between 1 and 100
 
 // banUserInfo stores all the information about a user to ban
 type banUserInfo struct {
@@ -35,7 +35,6 @@ type channelParticipantInfo struct {
 type searchParams struct {
 	endUnixTime    int64
 	duration       time.Duration
-	offset         int
 	limit          int
 	ignoreMessages bool
 }
@@ -47,9 +46,9 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 	log.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", params.duration, banFrom, banTo)
 
 	// Buffered channel with users to ban
-	nottyList := make(chan channelParticipantInfo, participantsRequestLimit)
+	nottyList := make(chan channelParticipantInfo, messagesRequestLimit)
 
-	go getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, params.offset, params.limit, nottyList)
+	go getChannelMembersByJoinMessage(ctx, api, channel, banFrom, banTo, params.limit, nottyList)
 
 	fileName := fmt.Sprintf("./ban/telegram-banhammer-%s.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
@@ -61,53 +60,69 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 	}
 }
 
-// getSingleUserStoreInfo retrieves userID and joined date for users in given period and pushes them to users channel,
+// getSingleUserStoreInfo retrieves extended user info for all users who joined in the given period,
 // closes provided channel before returning, supposed to be run in goroutine.
-// Uses provided offset: Telegram sort seems to be stable so once you established there are no droids here,
-// you can just add offset to always start from the point after the filtered users.
-func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, channel *tg.Channel, banFrom, banTo time.Time, offset, searchLimit int, users chan<- channelParticipantInfo) {
+func getChannelMembersByJoinMessage(ctx context.Context, api *tg.Client, channel *tg.Channel, banFrom, banTo time.Time, searchLimit int, users chan<- channelParticipantInfo) {
 	defer close(users)
+	var offsetID int
+	var processed int
 	for {
-		if searchLimit != 0 && offset >= searchLimit {
+		if searchLimit != 0 && processed >= searchLimit {
 			break
 		}
-		participants, err := api.ChannelsGetParticipants(ctx,
-			&tg.ChannelsGetParticipantsRequest{
-				Channel: channel.AsInput(),
-				Filter:  &tg.ChannelParticipantsRecent{},
-				Limit:   participantsRequestLimit,
-				Offset:  offset,
-			})
-		offset += participantsRequestLimit
+		messages, err := api.MessagesSearch(ctx, &tg.MessagesSearchRequest{
+			Peer:     channel.AsInputPeer(),
+			Filter:   &tg.InputMessagesFilterEmpty{},
+			MinDate:  int(banFrom.Unix()),
+			MaxDate:  int(banTo.Unix()),
+			Limit:    messagesRequestLimit,
+			OffsetID: offsetID,
+		})
 		if err != nil {
-			log.Printf("[ERROR] Error getting channel participants: %v", err)
+			log.Printf("[ERROR] Error retrieving messages: %v", err)
 			break
 		}
-		if participants.Zero() {
-			log.Printf("[INFO] No more users to process")
+		if messages.Zero() {
 			break
 		}
-		for _, participant := range participants.(*tg.ChannelsChannelParticipants).Participants {
-			if p, ok := participant.(*tg.ChannelParticipant); ok {
-				joinTime := time.Unix(int64(p.Date), 0)
-				if joinTime.After(banFrom) && joinTime.Before(banTo) {
-					// retrieve user info searches over all retrieved users in the latest bunch
-					// O(N^2) but N is small (100)
-					for _, u := range participants.(*tg.ChannelsChannelParticipants).GetUsers() {
-						if u.GetID() == p.GetUserID() {
-							// ignore error as then we couldn't do anything about it anyway
-							if user, ok := u.(*tg.User); ok {
-								// there is no point in writing to channel if we can't get user info
-								// as without access hash we can't ban user
-								users <- channelParticipantInfo{participantInfo: p, info: user}
-							}
-							break
+		processed += messagesRequestLimit
+		var rawMessages []tg.MessageClass
+		switch v := messages.(type) {
+		case *tg.MessagesMessages:
+			rawMessages = v.Messages
+		case *tg.MessagesMessagesSlice:
+			rawMessages = v.Messages
+		case *tg.MessagesChannelMessages:
+			rawMessages = v.Messages
+		}
+
+		for _, message := range rawMessages {
+			offsetID = message.GetID()
+			if m, ok := message.(*tg.MessageService); ok {
+				if peer, okM := m.GetFromID(); okM {
+					if u, okU := peer.(*tg.PeerUser); okU {
+						participant, e := api.ChannelsGetParticipant(ctx, &tg.ChannelsGetParticipantRequest{
+							Channel: channel.AsInput(),
+							Participant: &tg.InputPeerUserFromMessage{
+								Peer:   channel.AsInputPeer(),
+								MsgID:  m.GetID(),
+								UserID: u.GetUserID(),
+							},
+						})
+						if e != nil || participant.Zero() {
+							continue
 						}
+						for _, pUser := range participant.Users {
+							if user, okCh := pUser.(*tg.User); okCh {
+								users <- channelParticipantInfo{info: user, participantInfo: &tg.ChannelParticipant{UserID: user.GetID(), Date: m.GetDate()}}
+							}
+						}
+
 					}
 				}
 			}
 		}
-		log.Printf("[INFO] Processed %d users", offset)
+		log.Printf("[INFO] Processed %d messages", processed)
 	}
 }
 
@@ -207,8 +222,8 @@ func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Cha
 	}
 	if message != "" {
 		userInfoToStore.message = message
-		if len(message) > 80 {
-			message = string([]rune(message)[:65]) + "... (truncated)"
+		if len(message) > 50 {
+			message = string([]rune(message)[:45]) + "... (truncated)"
 		}
 		userInfoStr += fmt.Sprintf(", last message: %s", strings.ReplaceAll(message, "\n", " "))
 	} else {
