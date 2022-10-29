@@ -46,11 +46,7 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 
 	// Buffered channel with users to ban
 	nottyList := make(chan channelParticipantInfo, requestLimit)
-	if params.offset != 0 {
-		go getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, params.offset, params.limit, nottyList)
-	} else {
-		go getChannelMembersByJoinMessage(ctx, api, channel, banFrom, banTo, params.limit, nottyList)
-	}
+	go getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, params.offset, params.limit, nottyList)
 
 	fileName := fmt.Sprintf("./ban/%s.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
@@ -111,72 +107,6 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 			}
 		}
 		log.Printf("[INFO] Processed %d users", offset)
-	}
-}
-
-// getSingleUserStoreInfo retrieves extended user info for all users who joined in the given period,
-// closes provided channel before returning, supposed to be run in goroutine.
-func getChannelMembersByJoinMessage(ctx context.Context, api *tg.Client, channel *tg.Channel, banFrom, banTo time.Time, searchLimit int, users chan<- channelParticipantInfo) {
-	defer close(users)
-	var offsetID int
-	var processed int
-	for {
-		if searchLimit != 0 && processed >= searchLimit {
-			break
-		}
-		messages, err := api.MessagesSearch(ctx, &tg.MessagesSearchRequest{
-			Peer:     channel.AsInputPeer(),
-			Filter:   &tg.InputMessagesFilterEmpty{},
-			MinDate:  int(banFrom.Unix()),
-			MaxDate:  int(banTo.Unix()),
-			Limit:    requestLimit,
-			OffsetID: offsetID,
-		})
-		if err != nil {
-			log.Printf("[ERROR] Error retrieving messages: %v", err)
-			break
-		}
-		if messages.Zero() {
-			break
-		}
-		processed += requestLimit
-		var rawMessages []tg.MessageClass
-		switch v := messages.(type) {
-		case *tg.MessagesMessages:
-			rawMessages = v.Messages
-		case *tg.MessagesMessagesSlice:
-			rawMessages = v.Messages
-		case *tg.MessagesChannelMessages:
-			rawMessages = v.Messages
-		}
-
-		for _, message := range rawMessages {
-			offsetID = message.GetID()
-			if m, ok := message.(*tg.MessageService); ok {
-				if peer, okM := m.GetFromID(); okM {
-					if u, okU := peer.(*tg.PeerUser); okU {
-						participant, e := api.ChannelsGetParticipant(ctx, &tg.ChannelsGetParticipantRequest{
-							Channel: channel.AsInput(),
-							Participant: &tg.InputPeerUserFromMessage{
-								Peer:   channel.AsInputPeer(),
-								MsgID:  m.GetID(),
-								UserID: u.GetUserID(),
-							},
-						})
-						if e != nil || participant.Zero() {
-							continue
-						}
-						for _, pUser := range participant.Users {
-							if user, okCh := pUser.(*tg.User); okCh {
-								users <- channelParticipantInfo{info: user, participantInfo: &tg.ChannelParticipant{UserID: user.GetID(), Date: m.GetDate()}}
-							}
-						}
-
-					}
-				}
-			}
-		}
-		log.Printf("[INFO] Processed %d messages", processed)
 	}
 }
 
