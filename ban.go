@@ -24,29 +24,25 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 
 	stoppedIndex := banUserAndClearMessages(ctx, api, channel, users)
 
-	// save rest of the users to the new file once context is canceled, so that it would be easier to restart the process
-	select {
-	case <-ctx.Done():
-		if stoppedIndex == len(users)-1 {
-			break
-		}
-		fileName := fmt.Sprintf("./ban/%s.after_ctx_cancel.users.csv", time.Now().Format("2006-01-02T15-04-05"))
+	// save unprocessed users to the new file, so that it would be easier to restart the process
+	if stoppedIndex == len(users)-1 {
+		return
+	}
+	fileName := fmt.Sprintf("./ban/%s.unprocessed.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
-		var usersToBan []banUserInfo
-		for _, user := range users[stoppedIndex:] {
-			usersToBan = append(usersToBan, banUserInfo{userID: user.UserID, accessHash: user.AccessHash})
-		}
-		if e := writeUsersToFile(usersToBan, fileName); err != nil {
-			log.Printf("[ERROR] Error writing rest of users to ban after context cancel to file: %v", e)
-		} else {
-			log.Printf("[INFO] Success, rest of users (%d-%d) to ban after context cancel written to %s",
-				stoppedIndex,
-				len(users),
-				fileName)
-			log.Printf("[INFO] To continue, run the same command with the new filename:")
-			log.Printf("[INFO] --ban_and_kick_filepath %s", fileName)
-		}
-	default:
+	usersToBan := make([]banUserInfo, len(users[stoppedIndex:]))
+	for _, user := range users[stoppedIndex:] {
+		usersToBan = append(usersToBan, banUserInfo{userID: user.UserID, accessHash: user.AccessHash})
+	}
+	if e := writeUsersToFile(usersToBan, fileName); err != nil {
+		log.Printf("[ERROR] Error writing rest of users to ban after context cancel to file: %v", e)
+	} else {
+		log.Printf("[INFO] Success, rest of users (%d-%d) to ban after context cancel written to %s",
+			stoppedIndex,
+			len(users),
+			fileName)
+		log.Printf("[INFO] To continue, run the same command with the new filename:")
+		log.Printf("[INFO] --ban_and_kick_filepath %s", fileName)
 	}
 }
 
