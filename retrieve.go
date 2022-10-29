@@ -219,14 +219,15 @@ func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Cha
 	var message string
 	if !ignoreMessages {
 		message = getSingeUserMessage(ctx, api, channel, userToBan.info.AsInputPeer())
-	}
-	if message != "" {
 		userInfoToStore.message = message
 		if len(message) > 50 {
 			message = string([]rune(message)[:45]) + "... (truncated)"
 		}
+	}
+	if message != "" {
 		userInfoStr += fmt.Sprintf(", last message: %s", strings.ReplaceAll(message, "\n", " "))
-	} else {
+	}
+	if message == "" && !ignoreMessages {
 		userInfoStr += ", no message found"
 	}
 	log.Printf("[INFO] %s", userInfoStr)
