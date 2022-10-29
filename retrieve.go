@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -54,7 +52,7 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 		go getChannelMembersByJoinMessage(ctx, api, channel, banFrom, banTo, params.limit, nottyList)
 	}
 
-	fileName := fmt.Sprintf("./ban/telegram-banhammer-%s.users.csv", time.Now().Format("2006-01-02T15-04-05"))
+	fileName := fmt.Sprintf("./ban/%s.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 
 	usersToBan := getUsersInfo(ctx, api, channel, nottyList, params.ignoreMessages)
 	if err := writeUsersToFile(usersToBan, fileName); err != nil {
@@ -180,49 +178,6 @@ func getChannelMembersByJoinMessage(ctx context.Context, api *tg.Client, channel
 		}
 		log.Printf("[INFO] Processed %d messages", processed)
 	}
-}
-
-// writeUsersToFile writes users to tab-separated csv file
-func writeUsersToFile(users []banUserInfo, fileName string) error {
-	file, err := os.Create(fileName)
-	if err != nil {
-		log.Printf("[ERROR] Error creating file %s: %v", fileName, err)
-		log.Printf("[INFO] Writing results to stdout instead")
-		file = os.Stdout
-	} else {
-		defer func() {
-			e := file.Close()
-			if e != nil {
-				log.Printf("[ERROR] Error closing file %s: %v", fileName, e)
-			}
-		}()
-	}
-
-	data := [][]string{{"joined", "userID", "access_hash", "username", "firstName", "lastName", "langCode", "message"}}
-
-	for _, user := range users {
-		data = append(data, []string{
-			user.joined.Format(time.RFC3339),              // joined
-			fmt.Sprintf("%d", user.userID),                // userID
-			fmt.Sprintf("%d", user.accessHash),            // accessHash
-			user.username,                                 // username
-			strings.ReplaceAll(user.firstName, "\t", " "), // firstName
-			strings.ReplaceAll(user.lastName, "\t", " "),  // lastName
-			user.langCode,                                 // langCode
-			strings.ReplaceAll(user.message, "\t", " "),   // message
-		})
-	}
-
-	writer := csv.NewWriter(file)
-	writer.Comma = '\t' // use tab as separator
-	defer writer.Flush()
-	for _, value := range data {
-		err = writer.Write(value)
-		if err != nil {
-			return fmt.Errorf("error writing row to csv: %v", err)
-		}
-	}
-	return nil
 }
 
 // getUsersInfo retrieves extended user info for every user in given channel, as well as single message sent by such user

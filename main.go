@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -175,7 +177,7 @@ func authenticate(ctx context.Context, phone, password string, client *telegram.
 		userAuth = auth.Constant(phone, password, auth.CodeAuthenticatorFunc(codePrompt))
 	}
 	// This will set up and perform authentication flow.
-	if err := auth.NewFlow(userAuth, auth.SendCodeOptions{}).Run(ctx, client.Auth()); err != nil {
+	if err := client.Auth().IfNecessary(ctx, auth.NewFlow(userAuth, auth.SendCodeOptions{})); err != nil {
 		return fmt.Errorf("error authenticating with the user: %w", err)
 	}
 	return nil
@@ -198,6 +200,49 @@ func getChannel(ctx context.Context, api *tg.Client, channelID int64) (*tg.Chann
 		return nil, fmt.Errorf("unknown chat type received: %T (expected Channel), %v", v, channelInfo.GetChats()[0])
 	}
 	return chat, nil
+}
+
+// writeUsersToFile writes users to tab-separated csv file
+func writeUsersToFile(users []banUserInfo, fileName string) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		log.Printf("[ERROR] Error creating file %s: %v", fileName, err)
+		log.Printf("[INFO] Writing results to stdout instead")
+		file = os.Stdout
+	} else {
+		defer func() {
+			e := file.Close()
+			if e != nil {
+				log.Printf("[ERROR] Error closing file %s: %v", fileName, e)
+			}
+		}()
+	}
+
+	data := [][]string{{"joined", "userID", "access_hash", "username", "firstName", "lastName", "langCode", "message"}}
+
+	for _, user := range users {
+		data = append(data, []string{
+			user.joined.Format(time.RFC3339),              // joined
+			fmt.Sprintf("%d", user.userID),                // userID
+			fmt.Sprintf("%d", user.accessHash),            // accessHash
+			user.username,                                 // username
+			strings.ReplaceAll(user.firstName, "\t", " "), // firstName
+			strings.ReplaceAll(user.lastName, "\t", " "),  // lastName
+			user.langCode,                                 // langCode
+			strings.ReplaceAll(user.message, "\t", " "),   // message
+		})
+	}
+
+	writer := csv.NewWriter(file)
+	writer.Comma = '\t' // use tab as separator
+	defer writer.Flush()
+	for _, value := range data {
+		err = writer.Write(value)
+		if err != nil {
+			return fmt.Errorf("error writing row to csv: %v", err)
+		}
+	}
+	return nil
 }
 
 func setupLog(dbg bool) {

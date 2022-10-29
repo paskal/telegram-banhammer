@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"time"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/gotd/td/tg"
@@ -21,10 +22,40 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 		return
 	}
 
+	stoppedIndex := banUserAndClearMessages(ctx, api, channel, users)
+
+	// save rest of the users to the new file once context is canceled, so that it would be easier to restart the process
+	select {
+	case <-ctx.Done():
+		if stoppedIndex == len(users)-1 {
+			break
+		}
+		fileName := fmt.Sprintf("./ban/%s.after_ctx_cancel.users.csv", time.Now().Format("2006-01-02T15-04-05"))
+
+		var usersToBan []banUserInfo
+		for _, user := range users[stoppedIndex:] {
+			usersToBan = append(usersToBan, banUserInfo{userID: user.UserID, accessHash: user.AccessHash})
+		}
+		if e := writeUsersToFile(usersToBan, fileName); err != nil {
+			log.Printf("[ERROR] Error writing rest of users to ban after context cancel to file: %v", e)
+		} else {
+			log.Printf("[INFO] Success, rest of users (%d-%d) to ban after context cancel written to %s",
+				stoppedIndex,
+				len(users),
+				fileName)
+			log.Printf("[INFO] To continue, run the same command with the new filename:")
+			log.Printf("[INFO] --ban_and_kick_filepath %s", fileName)
+		}
+	default:
+	}
+}
+
+// banUserAndClearMessages bans users and clears their messages, and returns number of processed users as result
+func banUserAndClearMessages(ctx context.Context, api *tg.Client, channel *tg.Channel, users []*tg.InputPeerUser) int {
 	for i, user := range users {
 		log.Printf("[DEBUG] Banning and kicking user %d forever", user.UserID)
 		log.Printf("[DEBUG] Deleting messages by the user %d", user.UserID)
-		_, err = api.ChannelsDeleteParticipantHistory(ctx, &tg.ChannelsDeleteParticipantHistoryRequest{
+		_, err := api.ChannelsDeleteParticipantHistory(ctx, &tg.ChannelsDeleteParticipantHistoryRequest{
 			Channel:     channel.AsInput(),
 			Participant: user,
 		})
@@ -53,8 +84,15 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 		if err != nil {
 			log.Printf("[ERROR] error banning user %d: %v", user.UserID, err)
 		}
+		// do not attempt to ban users after the context is canceled
+		select {
+		case <-ctx.Done():
+			return i
+		default:
+		}
 		log.Printf("[INFO] Done processing #%d/%d", i+1, len(users))
 	}
+	return len(users) - 1
 }
 
 // readUserIDsFromCSV reads user IDs from the second column of tab-separated CSV file
