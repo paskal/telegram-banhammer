@@ -17,13 +17,19 @@ const participantsRequestLimit = 100 // should be between 1 and 100
 
 // banUserInfo stores all the information about a user to ban
 type banUserInfo struct {
-	userID    int64
-	joined    time.Time
-	message   string
-	username  string
-	firstName string
-	lastName  string
-	langCode  string
+	userID     int64
+	accessHash int64
+	joined     time.Time
+	message    string
+	username   string
+	firstName  string
+	lastName   string
+	langCode   string
+}
+
+type channelParticipantInfo struct {
+	participantInfo *tg.ChannelParticipant
+	info            *tg.User
 }
 
 // retrieves users by for given period and write them to file in ./ban directory
@@ -33,7 +39,7 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 	log.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", banSearchDuration, banFrom, banTo)
 
 	// Buffered channel with users to ban
-	nottyList := make(chan *tg.ChannelParticipant, participantsRequestLimit)
+	nottyList := make(chan channelParticipantInfo, participantsRequestLimit)
 
 	go func() {
 		err := getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, nottyList)
@@ -55,7 +61,7 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 
 // getSingleUserStoreInfo retrieves userID and joined date for users in given period and pushes them to users channel,
 // supposed to be run in goroutine
-func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, channel *tg.Channel, banFrom, banTo time.Time, users chan<- *tg.ChannelParticipant) error {
+func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, channel *tg.Channel, banFrom, banTo time.Time, users chan<- channelParticipantInfo) error {
 	var offset int
 	for {
 		participants, err := api.ChannelsGetParticipants(ctx,
@@ -74,20 +80,22 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 			break
 		}
 		for _, participant := range participants.(*tg.ChannelsChannelParticipants).Participants {
-			switch v := participant.(type) {
-			case *tg.ChannelParticipant:
-				p := v
+			if p, ok := participant.(*tg.ChannelParticipant); ok {
 				joinTime := time.Unix(int64(p.Date), 0)
 				if joinTime.After(banFrom) && joinTime.Before(banTo) {
-					users <- p
+					// retrieve user info searches over all retrieved users in the latest bunch
+					// O(N^2) but N is small (100)
+					for _, u := range participants.(*tg.ChannelsChannelParticipants).GetUsers() {
+						if u.GetID() == p.GetUserID() {
+							// ignore error as then we couldn't do anything about it anyway
+							user, _ := u.(*tg.User)
+							// there is no point in writing to channel if we can't get user info
+							// as without access hash we can't ban user
+							users <- channelParticipantInfo{participantInfo: p, info: user}
+							break
+						}
+					}
 				}
-			case *tg.ChannelParticipantSelf:
-			case *tg.ChannelParticipantCreator:
-			case *tg.ChannelParticipantAdmin:
-			case *tg.ChannelParticipantBanned:
-			case *tg.ChannelParticipantLeft:
-			default:
-				log.Printf("[WARN] Unknown participant type: %T, %v", v, participant)
 			}
 		}
 		log.Printf("[INFO] Processed %d users", offset)
@@ -111,12 +119,13 @@ func writeUsersToFile(users []banUserInfo, fileName string) error {
 		}()
 	}
 
-	data := [][]string{{"joined", "userID", "username", "firstName", "lastName", "langCode", "message"}}
+	data := [][]string{{"joined", "userID", "access_hash", "username", "firstName", "lastName", "langCode", "message"}}
 
 	for _, user := range users {
 		data = append(data, []string{
 			user.joined.Format(time.RFC3339),              // joined
 			fmt.Sprintf("%d", user.userID),                // userID
+			fmt.Sprintf("%d", user.accessHash),            // accessHash
 			user.username,                                 // username
 			strings.ReplaceAll(user.firstName, "\t", " "), // firstName
 			strings.ReplaceAll(user.lastName, "\t", " "),  // lastName
@@ -138,7 +147,7 @@ func writeUsersToFile(users []banUserInfo, fileName string) error {
 }
 
 // getUsersInfo retrieves extended user info for every user in given channel, as well as single message sent by such user
-func getUsersInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, users <-chan *tg.ChannelParticipant) []banUserInfo {
+func getUsersInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, users <-chan channelParticipantInfo) []banUserInfo {
 	var members []banUserInfo
 	// Do not check for ctx.Done() because then we could store existing data about the user as-is and write it to a file
 	// instead of dropping the information which we already retrieved. That is achieved by closing users channel.
@@ -159,27 +168,32 @@ func getUsersInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, user
 }
 
 // getSingleUserStoreInfo retrieves extended user information for given user and returns filled banUserInfo
-func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, userToBan *tg.ChannelParticipant) banUserInfo {
-	joined := time.Unix(int64(userToBan.Date), 0)
+func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, userToBan channelParticipantInfo) banUserInfo {
+	joined := time.Unix(int64(userToBan.participantInfo.Date), 0)
 	userInfoToStore := banUserInfo{
-		userID: userToBan.UserID,
+		userID: userToBan.participantInfo.UserID,
 		joined: joined,
 	}
-	userInfoStr := fmt.Sprintf("user to ban %d, joined %s", userToBan.UserID, joined)
-	telegramUser := getTelegramUser(ctx, api, userToBan.UserID)
-	if telegramUser != nil {
-		userInfoStr = fmt.Sprintf("user to ban @%s (%s %s), joined %s",
-			telegramUser.Username,
-			telegramUser.FirstName,
-			telegramUser.LastName,
+	userInfoStr := "user to ban"
+	if userToBan.info.Username != "" {
+		userInfoStr += fmt.Sprintf(" @%s (%s %s) joined %s",
+			userToBan.info.Username,
+			userToBan.info.FirstName,
+			userToBan.info.LastName,
 			joined)
-		userInfoToStore.username = telegramUser.Username
-		userInfoToStore.firstName = telegramUser.FirstName
-		userInfoToStore.lastName = telegramUser.LastName
-		userInfoToStore.langCode = telegramUser.LangCode
+	} else {
+		userInfoStr += fmt.Sprintf(" %s %s joined %s",
+			userToBan.info.FirstName,
+			userToBan.info.LastName,
+			joined)
 	}
+	userInfoToStore.username = userToBan.info.Username
+	userInfoToStore.firstName = userToBan.info.FirstName
+	userInfoToStore.lastName = userToBan.info.LastName
+	userInfoToStore.langCode = userToBan.info.LangCode
+	userInfoToStore.accessHash = userToBan.info.AccessHash
 
-	message := getSingeUserMessage(ctx, api, channel, userToBan)
+	message := getSingeUserMessage(ctx, api, channel, userToBan.info.AsInputPeer())
 	if message != "" {
 		userInfoToStore.message = message
 		if len(message) > 80 {
@@ -193,35 +207,17 @@ func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Cha
 	return userInfoToStore
 }
 
-// getTelegramUser retrieves single user extended information from Telegram API
-func getTelegramUser(ctx context.Context, api *tg.Client, userID int64) *tg.User {
-	// TODO: doesn't work without User's AccessHash
-	// userInfo, err := api.UsersGetUsers(ctx, []tg.InputUserClass{&tg.InputUser{UserID: userID}})
-	// if err != nil {
-	// 	log.Printf("[DEBUG] Error retrieving info for user %d: %v", userID, err)
-	// 	return nil
-	// }
-	// if len(userInfo) != 1 {
-	// 	return nil
-	// }
-	// switch v := userInfo[0].(type) {
-	// case *tg.User:
-	// 	return v
-	// }
-	return nil
-}
-
 // getSingeUserMessage retrieves single user (last?) message from given channel from Telegram API
-func getSingeUserMessage(ctx context.Context, api *tg.Client, channel *tg.Channel, userToBan *tg.ChannelParticipant) string {
+func getSingeUserMessage(ctx context.Context, api *tg.Client, channel *tg.Channel, user tg.InputPeerClass) string {
 	var message string
 	messages, err := api.MessagesSearch(ctx, &tg.MessagesSearchRequest{
-		FromID: &tg.InputPeerUser{UserID: userToBan.UserID},
+		FromID: user,
 		Peer:   channel.AsInputPeer(),
 		Filter: &tg.InputMessagesFilterEmpty{},
 		Limit:  1,
 	})
 	if err != nil {
-		log.Printf("[ERROR] Error retrieving user %d message: %v", userToBan.UserID, err)
+		log.Printf("[ERROR] Error retrieving user %s message: %v", user.String(), err)
 		return ""
 	}
 	if messages.Zero() {
