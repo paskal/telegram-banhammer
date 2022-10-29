@@ -88,10 +88,11 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 					for _, u := range participants.(*tg.ChannelsChannelParticipants).GetUsers() {
 						if u.GetID() == p.GetUserID() {
 							// ignore error as then we couldn't do anything about it anyway
-							user, _ := u.(*tg.User)
-							// there is no point in writing to channel if we can't get user info
-							// as without access hash we can't ban user
-							users <- channelParticipantInfo{participantInfo: p, info: user}
+							if user, ok := u.(*tg.User); ok {
+								// there is no point in writing to channel if we can't get user info
+								// as without access hash we can't ban user
+								users <- channelParticipantInfo{participantInfo: p, info: user}
+							}
 							break
 						}
 					}

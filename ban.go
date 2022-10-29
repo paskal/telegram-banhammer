@@ -53,7 +53,7 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 		if err != nil {
 			log.Printf("[ERROR] error banning user %d: %v", user.UserID, err)
 		}
-		log.Printf("[INFO] Done processing user #%d out of %d", i+1, len(users))
+		log.Printf("[INFO] Done processing #%d/%d", i+1, len(users))
 	}
 }
 
