@@ -11,19 +11,20 @@ Currently, the only filter is by the join time to kill the bot hoards.
 
 ## CLI parameters
 
-| Command line           | Default | Description                                                                                |
-|------------------------|---------|--------------------------------------------------------------------------------------------|
-| appid                  |         | AppID, _required_                                                                          |
-| apphash                |         | AppHash, _required_                                                                        |
-| phone                  |         | Telegram phone of the channel admin, _required_                                            |
-| password               | ``      | password, if set for the admin, _optional_                                                 |
-| channel_id             |         | channel or supergroup id, without -100 part, _required_                                    |
-| ban_to_timestamp       |         | the end of the time from which newly joined users will be banned, _required for search_    |
-| ban_search_duration    |         | amount of time before the ban_to for which we need to ban users, _required for search_     |
-| ban_search_limit       | `0`     | limit of messages to process for ban, 0 is unlimited                                       |
-| ban_and_kick_filepath  |         | set this option to path to text file with users clean up their messages, ban and kick them |
-| search_ignore_messages | `false` | do not retrieve messages when searching for users to ban                                   |
-| dbg                    | `false` | debug mode                                                                                 |
+| Command line           | Default | Description                                                                                                                      |
+|------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------|
+| appid                  |         | AppID, _required_                                                                                                                |
+| apphash                |         | AppHash, _required_                                                                                                              |
+| phone                  |         | Telegram phone of the channel admin, _required_                                                                                  |
+| password               | ``      | password, if set for the admin, _optional_                                                                                       |
+| channel_id             |         | channel or supergroup id, without -100 part, _required_                                                                          |
+| ban_to_timestamp       |         | the end of the time from which newly joined users will be banned, _required for search_                                          |
+| ban_search_duration    |         | amount of time before the ban_to for which we need to ban users, _required for search_                                           |
+| ban_search_offset      | `0`     | starting offset of search, useful if you banned the offenders in first N users already. If provided, slower user search is used. |
+| ban_search_limit       | `0`     | limit of users to check for ban, 0 is unlimited                                                                                  |
+| ban_and_kick_filepath  |         | set this option to path to text file with users clean up their messages, ban and kick them                                       |
+| search_ignore_messages | `false` | do not retrieve messages when searching for users to ban                                                                         |
+| dbg                    | `false` | debug mode                                                                                                                       |
 
 
 ## How to run
