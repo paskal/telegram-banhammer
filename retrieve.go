@@ -30,7 +30,7 @@ type channelParticipantInfo struct {
 }
 
 type searchParams struct {
-	endUnixTime    int64
+	banTo          time.Time
 	duration       time.Duration
 	offset         int
 	limit          int
@@ -39,13 +39,12 @@ type searchParams struct {
 
 // retrieves users by for given period and write them to file in ./ban directory
 func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.Channel, params searchParams) {
-	banTo := time.Unix(params.endUnixTime, 0)
-	banFrom := banTo.Add(-params.duration)
-	log.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", params.duration, banFrom, banTo)
+	banFrom := params.banTo.Add(-params.duration)
+	log.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", params.duration, banFrom, params.banTo)
 
 	// Buffered channel with users to ban
 	nottyList := make(chan channelParticipantInfo, requestLimit)
-	go getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, banTo, params.offset, params.limit, nottyList)
+	go getChannelMembersWithinTimeframe(ctx, api, channel, banFrom, params.banTo, params.offset, params.limit, nottyList)
 
 	fileName := fmt.Sprintf("./ban/%s.users.csv", time.Now().Format("2006-01-02T15-04-05"))
 

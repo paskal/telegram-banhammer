@@ -26,8 +26,9 @@ type options struct {
 	AppHash              string        `long:"apphash" description:"AppHash, https://core.telegram.org/api/obtaining_api_id" required:"true"`
 	Phone                string        `long:"phone" description:"Telegram phone of the channel admin" required:"true"`
 	Password             string        `long:"password" description:"password, if set for the admin"`
-	ChannelID            int64         `long:"channel_id" description:"channel or supergroup id, without -100 part, https://gist.github.com/mraaroncruz/e76d19f7d61d59419002db54030ebe35" required:"true"`
+	ChannelID            int64         `long:"channel-id" description:"channel or supergroup id, without -100 part, https://gist.github.com/mraaroncruz/e76d19f7d61d59419002db54030ebe35" required:"true"`
 	BanToTimestamp       int64         `long:"ban-to-timestamp" description:"the end of the time from which newly joined users will be banned, unix timestamp"`
+	BanToTime            string        `long:"ban-to-time" description:"the end of the time from which newly joined users will be banned, dd-mm-yyThh:mm:ss format (like 31-10-22T19:30:15), in your timezone"`
 	BanSearchDuration    time.Duration `long:"ban-search-duration" description:"amount of time before the ban-to-timestamp for which we need to ban users"`
 	BanSearchOffset      int           `long:"ban-search-offset" description:"starting offset of search, useful if you banned the offenders in first N users already"`
 	BanSearchLimit       int           `long:"ban-search-limit" description:"limit of users to check for ban, 0 is unlimited"`
@@ -54,7 +55,7 @@ func main() {
 		os.Exit(1)
 	}
 	setupLog(opts.Dbg)
-	log.Printf("[DEBUG] Starting telegram-banhammer %s", revision)
+	log.Printf("[INFO] Starting telegram-banhammer %s", revision)
 
 	if err := ensureDirectoryExists("./ban"); err != nil {
 		log.Fatalf("[FATAL] %v", err)
@@ -131,8 +132,19 @@ func main() {
 		}
 
 		// retrieve users to ban case
-		if opts.BanToTimestamp == 0 {
-			log.Printf("[ERROR] ban-to-timestamp must be set when searching for users")
+		banTo := time.Time{}
+		if opts.BanToTimestamp != 0 {
+			banTo = time.Unix(opts.BanToTimestamp, 0)
+		}
+		if opts.BanToTime != "" {
+			banTo, err = time.ParseInLocation("02-01-06T15:04:05", opts.BanToTime, time.Local)
+			if err != nil {
+				log.Printf("[ERROR] can't parse ban-to-time: %v", err)
+				return nil
+			}
+		}
+		if banTo.IsZero() {
+			log.Printf("[ERROR] ban-to-timestamp or ban-to-time must be set when searching for users")
 			return nil
 		}
 		if opts.BanSearchDuration.Seconds() <= 0 {
@@ -140,7 +152,7 @@ func main() {
 			return nil
 		}
 		searchAndStoreUsersToBan(ctx, api, channel, searchParams{
-			endUnixTime:    opts.BanToTimestamp,
+			banTo:          banTo,
 			duration:       opts.BanSearchDuration,
 			offset:         opts.BanSearchOffset,
 			limit:          opts.BanSearchLimit,
