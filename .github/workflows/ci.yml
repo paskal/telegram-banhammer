@@ -10,7 +10,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      packages: write
+      packages: write # for docker push
+      contents: write # for goreleaser
 
     steps:
       - name: set up go 1.19
