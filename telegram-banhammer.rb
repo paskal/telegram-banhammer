@@ -5,21 +5,21 @@
 class TelegramBanhammer < Formula
   desc "A program which uses MTProto Telegram API to ban spammers from a group."
   homepage "https://github.com/paskal/telegram-banhammer"
-  version "0.3.2"
+  version "1.0.0"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/paskal/telegram-banhammer/releases/download/v0.3.2/telegram-banhammer_0.3.2_macos_x86_64.tar.gz"
-      sha256 "b633a03994225573f66968acf7e421484b4ad4fb2633b35623883bc19d49d554"
+      url "https://github.com/paskal/telegram-banhammer/releases/download/v1.0.0/telegram-banhammer_1.0.0_macos_x86_64.tar.gz"
+      sha256 "4888b0f949164750cfdd10dd56337cc98a8f63ae67bcac95513dde5ee50c49c5"
 
       def install
         bin.install "telegram-banhammer"
       end
     end
     if Hardware::CPU.arm?
-      url "https://github.com/paskal/telegram-banhammer/releases/download/v0.3.2/telegram-banhammer_0.3.2_macos_arm64.tar.gz"
-      sha256 "bdf0d073e9e8e888fda4ec5978cac9f8b34a0fea646050cd5617e5ce89b2feae"
+      url "https://github.com/paskal/telegram-banhammer/releases/download/v1.0.0/telegram-banhammer_1.0.0_macos_arm64.tar.gz"
+      sha256 "827654c812851400fbccc9195b6b4b331818db1a84da6a329df8570b5a678f28"
 
       def install
         bin.install "telegram-banhammer"
@@ -29,24 +29,24 @@ class TelegramBanhammer < Formula
 
   on_linux do
     if Hardware::CPU.arm? && !Hardware::CPU.is_64_bit?
-      url "https://github.com/paskal/telegram-banhammer/releases/download/v0.3.2/telegram-banhammer_0.3.2_linux_armv6.tar.gz"
-      sha256 "072296140a92902cb975003e5e457506b05d05ff2aff4e9c92955faa3f23036d"
-
-      def install
-        bin.install "telegram-banhammer"
-      end
-    end
-    if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-      url "https://github.com/paskal/telegram-banhammer/releases/download/v0.3.2/telegram-banhammer_0.3.2_linux_arm64.tar.gz"
-      sha256 "5a5de4849159ea213f916dfe2018fcad4dd8acf79228a032a6b005c27dfcf983"
+      url "https://github.com/paskal/telegram-banhammer/releases/download/v1.0.0/telegram-banhammer_1.0.0_linux_armv6.tar.gz"
+      sha256 "ce727aa10a6b73de2a35a1649d322d7fc07993f005b95d300e4907533a0fc5e5"
 
       def install
         bin.install "telegram-banhammer"
       end
     end
     if Hardware::CPU.intel?
-      url "https://github.com/paskal/telegram-banhammer/releases/download/v0.3.2/telegram-banhammer_0.3.2_linux_x86_64.tar.gz"
-      sha256 "e53c7093169bbd45c5a994fb7e5cf2d6f1f6ff7e0fdb90f5db84b584aad9876b"
+      url "https://github.com/paskal/telegram-banhammer/releases/download/v1.0.0/telegram-banhammer_1.0.0_linux_x86_64.tar.gz"
+      sha256 "ce11b4370c33ea3a5aa15d91488ae9b041c69bd53f9d4f9c1bbe030ba85666c9"
+
+      def install
+        bin.install "telegram-banhammer"
+      end
+    end
+    if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
+      url "https://github.com/paskal/telegram-banhammer/releases/download/v1.0.0/telegram-banhammer_1.0.0_linux_arm64.tar.gz"
+      sha256 "34d598057f7823404e4c4ef900dd11c5bfa8203988ca6d96c0d745a4789d0157"
 
       def install
         bin.install "telegram-banhammer"
