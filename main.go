@@ -21,6 +21,9 @@ import (
 	"golang.org/x/term"
 )
 
+//go:generate moq --out tg_api_mock.go . tgAPIInterface
+//go:generate moq --out tg_client_mock.go . tgClientInterface
+
 type options struct {
 	AppID                int           `long:"appid" description:"AppID, https://core.telegram.org/api/obtaining_api_id" required:"true"`
 	AppHash              string        `long:"apphash" description:"AppHash, https://core.telegram.org/api/obtaining_api_id" required:"true"`
@@ -48,6 +51,30 @@ const maxWait = time.Minute * 15
 
 // that tick value allows ban not being painfully slow after 300 users
 const tick = time.Second
+
+// channelRetriever is a subset of Telegram client functions used to retrieve channels
+type channelRetriever interface {
+	ChannelsGetChannels(ctx context.Context, id []tg.InputChannelClass) (tg.MessagesChatsClass, error)
+}
+
+type tgAPIInterface interface {
+	channelRetriever
+	retriever
+	banner
+}
+
+// tgAPI is defined only in tests
+var tgAPI tgAPIInterface
+
+// tgClientInterface defines subset of Telegram client functions used in the main function
+type tgClientInterface interface {
+	Run(ctx context.Context, f func(ctx context.Context) error) error
+	API() *tg.Client
+	Auth() *auth.Client
+}
+
+// tgClient is defined only in tests
+var tgClient tgClientInterface
 
 func main() {
 	var opts options
@@ -106,28 +133,32 @@ func main() {
 		}
 	}
 
-	client := telegram.NewClient(
-		opts.AppID,
-		opts.AppHash,
-		telegramOptions,
-	)
-	if err := client.Run(ctx, func(ctx context.Context) error {
-		api := client.API()
+	if tgClient == nil {
+		tgClient = telegram.NewClient(
+			opts.AppID,
+			opts.AppHash,
+			telegramOptions,
+		)
+	}
+	if err := tgClient.Run(ctx, func(ctx context.Context) error {
+		if tgAPI == nil {
+			tgAPI = tgClient.API()
+		}
 
 		log.Printf("[INFO] Logging in")
-		if err := authenticate(ctx, opts.Phone, opts.Password, client); err != nil {
+		if err := authenticate(ctx, opts.Phone, opts.Password, tgClient); err != nil {
 			return err
 		}
 
 		log.Printf("[INFO] Retrieving the channel information")
-		channel, err := getChannel(ctx, api, opts.ChannelID)
+		channel, err := getChannel(ctx, tgAPI, opts.ChannelID)
 		if err != nil {
 			return err
 		}
 
 		// ban users case
 		if opts.BanAndKickFilePath != "" {
-			banAndKickUsers(ctx, api, channel, opts.BanAndKickFilePath)
+			banAndKickUsers(ctx, tgAPI, channel, opts.BanAndKickFilePath)
 			return nil
 		}
 
@@ -151,7 +182,7 @@ func main() {
 			log.Printf("[ERROR] ban-search-duration must be non-zero when searching for users")
 			return nil
 		}
-		searchAndStoreUsersToBan(ctx, api, channel, searchParams{
+		searchAndStoreUsersToBan(ctx, tgAPI, channel, searchParams{
 			banTo:          banTo,
 			duration:       opts.BanSearchDuration,
 			offset:         opts.BanSearchOffset,
@@ -181,7 +212,7 @@ func ensureDirectoryExists(dir string) error {
 
 // authenticate the user. If password is not empty, it will be used.
 // Second factor code would be requested in any case.
-func authenticate(ctx context.Context, phone, password string, client *telegram.Client) error {
+func authenticate(ctx context.Context, phone, password string, client tgClientInterface) error {
 	// Function for getting second factor code from stdin
 	codePrompt := func(ctx context.Context, sentCode *tg.AuthSentCode) (string, error) {
 		fmt.Print("Enter code received from Telegram for login:")
@@ -207,7 +238,7 @@ func authenticate(ctx context.Context, phone, password string, client *telegram.
 }
 
 // getChannel returns tg.InputChannel with AccessHash doing search by ID
-func getChannel(ctx context.Context, api *tg.Client, channelID int64) (*tg.Channel, error) {
+func getChannel(ctx context.Context, api channelRetriever, channelID int64) (*tg.Channel, error) {
 	channelInfo, err := api.ChannelsGetChannels(ctx, []tg.InputChannelClass{&tg.InputChannel{ChannelID: channelID}})
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving channel by id: %w", err)

@@ -11,6 +11,12 @@ import (
 	"github.com/gotd/td/tg"
 )
 
+// retriever is a subset of telegram client functions for retrieving data from Telegram
+type retriever interface {
+	ChannelsGetParticipants(ctx context.Context, t *tg.ChannelsGetParticipantsRequest) (tg.ChannelsChannelParticipantsClass, error)
+	MessagesSearch(ctx context.Context, t *tg.MessagesSearchRequest) (tg.MessagesMessagesClass, error)
+}
+
 const requestLimit = 100 // should be between 1 and 100
 
 // banUserInfo stores all the information about a user to ban
@@ -38,7 +44,7 @@ type searchParams struct {
 }
 
 // retrieves users by for given period and write them to file in ./ban directory
-func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.Channel, params searchParams) {
+func searchAndStoreUsersToBan(ctx context.Context, api retriever, channel *tg.Channel, params searchParams) {
 	banFrom := params.banTo.Add(-params.duration)
 	log.Printf("[INFO] Looking for users to ban who joined in %s between %s and %s", params.duration, banFrom, params.banTo)
 
@@ -66,7 +72,7 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 // closes provided channel before returning, supposed to be run in goroutine.
 // Uses provided offset: Telegram sort seems to be stable so once you established there are no droids here,
 // you can just add offset to always start from the point after the filtered users.
-func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, channel *tg.Channel, banFrom, banTo time.Time, offset, searchLimit int, users chan<- channelParticipantInfo) {
+func getChannelMembersWithinTimeframe(ctx context.Context, api retriever, channel *tg.Channel, banFrom, banTo time.Time, offset, searchLimit int, users chan<- channelParticipantInfo) {
 	defer close(users)
 	for {
 		if searchLimit != 0 && offset >= searchLimit {
@@ -113,7 +119,7 @@ func getChannelMembersWithinTimeframe(ctx context.Context, api *tg.Client, chann
 }
 
 // getUsersInfo retrieves extended user info for every user in given channel, as well as single message sent by such user
-func getUsersInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, users <-chan channelParticipantInfo, ignoreMessages bool) []banUserInfo {
+func getUsersInfo(ctx context.Context, api retriever, channel *tg.Channel, users <-chan channelParticipantInfo, ignoreMessages bool) []banUserInfo {
 	var members []banUserInfo
 	// Do not check for ctx.Done() because then we could store existing data about the user as-is and write it to a file
 	// instead of dropping the information which we already retrieved. That is achieved by closing users channel.
@@ -134,7 +140,7 @@ func getUsersInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, user
 }
 
 // getSingleUserStoreInfo retrieves extended user information for given user and returns filled banUserInfo
-func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Channel, userToBan channelParticipantInfo, ignoreMessages bool) banUserInfo {
+func getSingleUserStoreInfo(ctx context.Context, api retriever, channel *tg.Channel, userToBan channelParticipantInfo, ignoreMessages bool) banUserInfo {
 	joined := time.Unix(int64(userToBan.participantInfo.Date), 0)
 	userInfoToStore := banUserInfo{
 		userID: userToBan.participantInfo.UserID,
@@ -177,7 +183,7 @@ func getSingleUserStoreInfo(ctx context.Context, api *tg.Client, channel *tg.Cha
 }
 
 // getSingeUserMessage retrieves single user (last?) message from given channel from Telegram API
-func getSingeUserMessage(ctx context.Context, api *tg.Client, channel *tg.Channel, user tg.InputPeerClass) string {
+func getSingeUserMessage(ctx context.Context, api retriever, channel *tg.Channel, user tg.InputPeerClass) string {
 	var message string
 	messages, err := api.MessagesSearch(ctx, &tg.MessagesSearchRequest{
 		FromID: user,

@@ -12,9 +12,14 @@ import (
 	"github.com/gotd/td/tg"
 )
 
+type banner interface {
+	ChannelsDeleteParticipantHistory(ctx context.Context, request *tg.ChannelsDeleteParticipantHistoryRequest) (*tg.MessagesAffectedHistory, error)
+	ChannelsEditBanned(ctx context.Context, request *tg.ChannelsEditBannedRequest) (tg.UpdatesClass, error)
+}
+
 // bans users from given file, cleans up their messages and kicks them afterwards.
 // in case of errors during the run, writes unprocessed errors back to the same file.
-func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, filePath string) {
+func banAndKickUsers(ctx context.Context, api banner, channel *tg.Channel, filePath string) {
 	users, err := readUserIDsFromCSV(filePath)
 	if err != nil {
 		log.Printf("[ERROR] error reading users from the file %s: %v", filePath, err)
@@ -46,7 +51,7 @@ func banAndKickUsers(ctx context.Context, api *tg.Client, channel *tg.Channel, f
 }
 
 // banUserAndClearMessages bans users and clears their messages, and returns number of processed users as result
-func banUserAndClearMessages(ctx context.Context, api *tg.Client, channel *tg.Channel, users []*tg.InputPeerUser) int {
+func banUserAndClearMessages(ctx context.Context, api banner, channel *tg.Channel, users []*tg.InputPeerUser) int {
 	for i, user := range users {
 		log.Printf("[DEBUG] Banning and kicking user %d forever", user.UserID)
 		log.Printf("[DEBUG] Deleting messages by the user %d", user.UserID)
