@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
 
     steps:
       - name: set up go 1.19
@@ -52,35 +54,33 @@ jobs:
         if: ${{ github.ref == 'refs/heads/master' }}
         env:
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-          GITHUB_PACKAGE_TOKEN: ${{ secrets.PKG_TOKEN }}
           USERNAME: ${{ github.actor }}
           GITHUB_SHA: ${{ github.sha}}
           GITHUB_REF: ${{ github.ref}}
         run: |
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           echo GITHUB_REF - $ref
-          echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${USERNAME} --password-stdin
           echo ${DOCKER_HUB_TOKEN} | docker login -u paskal --password-stdin
           docker buildx build --push \
               --build-arg CI=github --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} \
               --platform linux/amd64,linux/arm/v7,linux/arm64 \
-              -t ghcr.io/paskal/telegram-banhammer:${ref} -t paskal/telegram-banhammer:${ref} .
+              -t ghcr.io/${USERNAME}/telegram-banhammer:${ref} -t paskal/telegram-banhammer:${ref} .
 
       - name: deploy tagged (latest) to ghcr.io and dockerhub
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         env:
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-          GITHUB_PACKAGE_TOKEN: ${{ secrets.PKG_TOKEN }}
           USERNAME: ${{ github.actor }}
           GITHUB_SHA: ${{ github.sha}}
           GITHUB_REF: ${{ github.ref}}
         run: |
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           echo GITHUB_REF - $ref
-          echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${USERNAME} --password-stdin
           echo ${DOCKER_HUB_TOKEN} | docker login -u paskal --password-stdin
           docker buildx build --push \
               --build-arg CI=github --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} \
               --platform linux/amd64,linux/arm/v7,linux/arm64 \
-              -t ghcr.io/paskal/telegram-banhammer:${ref} -t ghcr.io/paskal/telegram-banhammer:latest \
+              -t ghcr.io/${USERNAME}/telegram-banhammer:${ref} -t ghcr.io/${USERNAME}/telegram-banhammer:latest \
               -t paskal/telegram-banhammer:${ref} -t paskal/telegram-banhammer:latest .
