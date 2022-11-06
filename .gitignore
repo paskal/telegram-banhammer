@@ -1,1 +1,6 @@
 ban
+
+# used in the CI pipeline, prevent goreleaser from seeing a clean git state
+golangci-lint
+profile.cov
+profile.cov_tmp
