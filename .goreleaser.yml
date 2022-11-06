@@ -46,3 +46,14 @@ nfpms:
     bindir: /usr/bin
     epoch: "1"
     release: "1"
+
+brews:
+  - name: telegram-banhammer
+    tap:
+      owner: paskal
+      name: telegram-banhammer
+    description: "A program which uses MTProto Telegram API to ban spammers from a group."
+    homepage: "https://github.com/paskal/telegram-banhammer"
+    license: "MIT"
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    test: system "#{bin}/telegram-banhammer --help"
