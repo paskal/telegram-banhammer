@@ -18,12 +18,12 @@ Currently, the only filter is by the join time to kill the bot hoards.
 | phone                  |         | Telegram phone of the channel admin, _required_                                            |
 | password               |         | password, if set for the admin, _optional_                                                 |
 | channel_id             |         | channel or supergroup id, without -100 part, _required_                                    |
-| ban_to_timestamp       |         | the end of the time from which newly joined users will be banned, _required for search_    |
-| ban_search_duration    |         | amount of time before the ban_to for which we need to ban users, _required for search_     |
-| ban_search_offset      | `0`     | starting offset of search, useful if you banned the offenders in first N users already     |
-| ban_search_limit       | `0`     | limit of users to check for ban, 0 is unlimited                                            |
-| ban_and_kick_filepath  |         | set this option to path to text file with users clean up their messages, ban and kick them |
-| search_ignore_messages | `false` | do not retrieve messages when searching for users to ban                                   |
+| ban-to-timestamp       |         | the end of the time from which newly joined users will be banned, _required for search_    |
+| ban-search-duration    |         | amount of time before the ban-to-timestamp for which we need to ban users, _required for search_     |
+| ban-search-offset      | `0`     | starting offset of search, useful if you banned the offenders in first N users already     |
+| ban-search-limit       | `0`     | limit of users to check for ban, 0 is unlimited                                            |
+| ban-and-kick-filepath  |         | set this option to path to text file with users clean up their messages, ban and kick them |
+| search-ignore-messages | `false` | do not retrieve messages when searching for users to ban                                   |
 | dbg                    | `false` | debug mode                                                                                 |
 ## Installation
 
@@ -39,20 +39,20 @@ To get the channel ID, please see https://gist.github.com/mraaroncruz/e76d19f7d6
 
 To get the AppID and AppHash, please see https://core.telegram.org/api/obtaining_api_id.
 
-After gathering the results, they will be written to a file with the current timestamp in the `ban` directory: no bans will be issued. Feel free to check the results (and remove users you think shouldn't be banned) and rerun the program with `--ban_and_kick_filepath` flag.
+After gathering the results, they will be written to a file with the current timestamp in the `ban` directory: no bans will be issued. Feel free to check the results (and remove users you think shouldn't be banned) and rerun the program with `--ban-and-kick-filepath` flag.
 
 ### Gather list of users
 
-`ban_to_timestamp` ([Unix time](https://en.wikipedia.org/wiki/Unix_time) format) and `ban_search_duration` (human-readable duration, like `60s` or `15m`) are mandatory.
+`ban-to-timestamp` ([Unix time](https://en.wikipedia.org/wiki/Unix_time) format) and `ban-search-duration` (human-readable duration, like `60s` or `15m`) are mandatory.
 
 ```bash
-telegram-banhammer --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_if_present" --channel_id 1234567 --ban_to 1666887600 --ban_search_duration 3m
+telegram-banhammer --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_if_present" --channel_id 1234567 --ban-to-timestamp 1666887600 --ban-search-duration 3m
 ```
 
 ### Clean messages, ban and kick users from the list
 
-`ban_and_kick_filepath` must be set to the path to the file with the list of users to ban and kick.
+`ban-and-kick-filepath` must be set to the path to the file with the list of users to ban and kick.
 
 ```bash
-telegram-banhammer --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_if_present" --ban_and_kick_filepath ban/telegram-banhammer-2022-10-28T22-03-40.users.csv
+telegram-banhammer --appid 123456 --apphash 123abcdf --phone +123456 --password "pass_if_present" --ban-and-kick-filepath ban/telegram-banhammer-2022-10-28T22-03-40.users.csv
 ```

@@ -59,7 +59,7 @@ func searchAndStoreUsersToBan(ctx context.Context, api *tg.Client, channel *tg.C
 	} else {
 		log.Printf("[INFO] Success, users to ban written to %s", fileName)
 		log.Printf("[INFO] Please review, and to ban run same command with the following flag:")
-		log.Printf("[INFO] --ban_and_kick_filepath %s", fileName)
+		log.Printf("[INFO] --ban-and-kick-filepath %s", fileName)
 	}
 }
 

@@ -27,12 +27,12 @@ type options struct {
 	Phone                string        `long:"phone" description:"Telegram phone of the channel admin" required:"true"`
 	Password             string        `long:"password" description:"password, if set for the admin"`
 	ChannelID            int64         `long:"channel_id" description:"channel or supergroup id, without -100 part, https://gist.github.com/mraaroncruz/e76d19f7d61d59419002db54030ebe35" required:"true"`
-	BanToTimestamp       int64         `long:"ban_to_timestamp" description:"the end of the time from which newly joined users will be banned, unix timestamp"`
-	BanSearchDuration    time.Duration `long:"ban_search_duration" description:"amount of time before the ban_to for which we need to ban users"`
-	BanSearchOffset      int           `long:"ban_search_offset" description:"starting offset of search, useful if you banned the offenders in first N users already"`
-	BanSearchLimit       int           `long:"ban_search_limit" description:"limit of users to check for ban, 0 is unlimited"`
-	SearchIgnoreMessages bool          `long:"search_ignore_messages" description:"do not retrieve messages when searching for users to ban"`
-	BanAndKickFilePath   string        `long:"ban_and_kick_filepath" description:"set this option to path to text file with users clean up their messages, ban and kick them"`
+	BanToTimestamp       int64         `long:"ban-to-timestamp" description:"the end of the time from which newly joined users will be banned, unix timestamp"`
+	BanSearchDuration    time.Duration `long:"ban-search-duration" description:"amount of time before the ban-to-timestamp for which we need to ban users"`
+	BanSearchOffset      int           `long:"ban-search-offset" description:"starting offset of search, useful if you banned the offenders in first N users already"`
+	BanSearchLimit       int           `long:"ban-search-limit" description:"limit of users to check for ban, 0 is unlimited"`
+	SearchIgnoreMessages bool          `long:"search-ignore-messages" description:"do not retrieve messages when searching for users to ban"`
+	BanAndKickFilePath   string        `long:"ban-and-kick-filepath" description:"set this option to path to text file with users clean up their messages, ban and kick them"`
 
 	Dbg bool `long:"dbg" description:"debug mode"`
 }
@@ -132,11 +132,11 @@ func main() {
 
 		// retrieve users to ban case
 		if opts.BanToTimestamp == 0 {
-			log.Printf("[ERROR] ban_to must be set when searching for users")
+			log.Printf("[ERROR] ban-to-timestamp must be set when searching for users")
 			return nil
 		}
 		if opts.BanSearchDuration.Seconds() <= 0 {
-			log.Printf("[ERROR] ban_search_duration must be non-zero when searching for users")
+			log.Printf("[ERROR] ban-search-duration must be non-zero when searching for users")
 			return nil
 		}
 		searchAndStoreUsersToBan(ctx, api, channel, searchParams{
