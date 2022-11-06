@@ -1,0 +1,48 @@
+release:
+  github:
+    owner: paskal
+    name: telegram-banhammer
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - "6"
+      - "7"
+    ldflags: "-s -w -X main.revision={{.Tag}}-{{.ShortCommit}}-{{.CommitDate}}"
+
+archives:
+  - format: tar.gz
+    replacements:
+      386: i386
+      amd64: x86_64
+      darwin: macos
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+
+nfpms:
+  - id: telegram-banhammer
+    package_name: telegram-banhammer
+    vendor: Dmitry Verkhoturov
+    homepage: https://github.com/paskal/telegram-banhammer
+    maintainer: Dmitry Verkhoturov <paskal.07@gmail.com>
+    description: A program which uses MTProto Telegram API to ban spammers from a group.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    epoch: "1"
+    release: "1"

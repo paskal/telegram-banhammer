@@ -173,7 +173,8 @@ func authenticate(ctx context.Context, phone, password string, client *telegram.
 	// Function for getting second factor code from stdin
 	codePrompt := func(ctx context.Context, sentCode *tg.AuthSentCode) (string, error) {
 		fmt.Print("Enter code received from Telegram for login:")
-		code, err := term.ReadPassword(syscall.Stdin)
+		// int conversion is in place to enable builds for Windows
+		code, err := term.ReadPassword(int(syscall.Stdin))
 		fmt.Print("\n")
 		if err != nil {
 			return "", fmt.Errorf("error reading code from the terminal: %w", err)
