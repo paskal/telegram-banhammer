@@ -1,2 +1,1 @@
-*.rb linguist-generated
-
+*.rb linguist-detectable=false
