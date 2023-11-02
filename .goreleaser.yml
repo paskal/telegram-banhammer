@@ -1,4 +1,3 @@
-version: 1
 release:
   github:
     owner: paskal
@@ -24,9 +23,9 @@ archives:
   - format: tar.gz
     name_template: >-
       {{- .ProjectName }}_
-      {{- .Tag }}_
+      {{- .Version }}_
       {{- if eq .Os "darwin" }}macos
-      {{- else }}{{ title .Os }}{{ end }}
+      {{- else }}{{ .Os }}{{ end }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
@@ -55,7 +54,7 @@ nfpms:
 
 brews:
   - name: telegram-banhammer
-    tap:
+    repository:
       owner: paskal
       name: telegram-banhammer
     description: "A program which uses MTProto Telegram API to ban spammers from a group."
