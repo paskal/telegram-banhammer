@@ -1,3 +1,4 @@
+version: 1
 release:
   github:
     owner: paskal
@@ -21,10 +22,15 @@ builds:
 
 archives:
   - format: tar.gz
-    replacements:
-      386: i386
-      amd64: x86_64
-      darwin: macos
+    name_template: >-
+      {{- .ProjectName }}_
+      {{.Version}}_
+      {{- if eq .Os "darwin" }}macos
+      {{- else }}{{ title .Os }}{{ end }}
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end -}}
     format_overrides:
       - goos: windows
         format: zip
