@@ -80,12 +80,6 @@ func main() {
 	}()
 	// prevent getting banned by floodwait
 	waiter := floodwait.NewWaiter().WithMaxRetries(maxRetries).WithMaxWait(maxWait).WithTick(tick)
-	go func() {
-		err := waiter.Run(ctx)
-		if err != nil && !errors.Is(err, context.Canceled) {
-			log.Printf("[WARN] Waiter middleware failed: %v", err)
-		}
-	}()
 
 	// credentials are stored per phone number
 	telegramOptions := telegram.Options{
@@ -111,7 +105,8 @@ func main() {
 		opts.AppHash,
 		telegramOptions,
 	)
-	if err := client.Run(ctx, func(ctx context.Context) error {
+
+	handler := func(ctx context.Context) error {
 		api := client.API()
 
 		log.Printf("[INFO] Logging in")
@@ -160,7 +155,12 @@ func main() {
 		})
 
 		return nil
-	}); err != nil {
+	}
+
+	err := waiter.Run(ctx, func(ctx context.Context) error {
+		return client.Run(ctx, handler)
+	})
+	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Printf("[ERROR] Error running the Telegram Banhammer: %s", err)
 	}
 }
