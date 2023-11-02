@@ -24,7 +24,7 @@ archives:
   - format: tar.gz
     name_template: >-
       {{- .ProjectName }}_
-      {{.Version}}_
+      {{- .Tag }}_
       {{- if eq .Os "darwin" }}macos
       {{- else }}{{ title .Os }}{{ end }}
       {{- if eq .Arch "amd64" }}x86_64
