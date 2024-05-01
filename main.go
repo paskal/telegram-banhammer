@@ -183,7 +183,7 @@ func ensureDirectoryExists(dir string) error {
 // Second factor code would be requested in any case.
 func authenticate(ctx context.Context, phone, password string, client *telegram.Client) error {
 	// Function for getting second factor code from stdin
-	codePrompt := func(ctx context.Context, sentCode *tg.AuthSentCode) (string, error) {
+	codePrompt := func(_ context.Context, _ *tg.AuthSentCode) (string, error) {
 		fmt.Print("Enter code received from Telegram for login:")
 		//nolint:unconvert // int conversion is in place to enable builds for Windows
 		code, err := term.ReadPassword(int(syscall.Stdin))
