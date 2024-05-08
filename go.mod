@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/go-pkgz/lgr v0.11.1
 	github.com/gotd/contrib v0.20.0
-	github.com/gotd/td v0.101.0
+	github.com/gotd/td v0.102.0
 	github.com/jessevdk/go-flags v1.5.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/term v0.19.0
