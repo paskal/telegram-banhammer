@@ -9,6 +9,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      "GitHub Actions updates":
+        patterns:
+          - "*"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
@@ -17,3 +21,8 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      "Go modules updates":
+        dependency-type: "production"
+      "Go modules updates for tests":
+        dependency-type: "development"
