@@ -1,5 +1,9 @@
 FROM umputun/baseimage:buildgo-latest as build
 
+LABEL org.opencontainers.image.authors="Dmitry Verkhoturov <paskal.07@gmail.com>"
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file#docker
+LABEL org.opencontainers.image.source="https://github.com/paskal/telegram-banhammer"
+
 ARG GIT_BRANCH
 ARG GITHUB_SHA
 ARG CI
