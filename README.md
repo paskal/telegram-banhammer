@@ -9,6 +9,10 @@ Currently, the only filter is by the join time to kill the bot hoards.
 ![](images/hoard.png)
 </details>
 
+## Archival note
+
+Please use https://github.com/umputun/tg-spam, as it is a much more effective tool.
+
 ## CLI parameters
 
 | Command line           | Default | Description                                                                                                                                      |
