@@ -1,7 +1,8 @@
 module github.com/paskal/telegram-banhammer
 
-go 1.21
-toolchain go1.23.6
+go 1.24
+
+toolchain go1.24.0
 
 require (
 	github.com/go-pkgz/lgr v0.11.1
