@@ -18,7 +18,6 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - exportloopref
     - gas
     - gochecknoinits
     - gocritic
