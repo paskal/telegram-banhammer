@@ -36,7 +36,7 @@ On Mac, run `brew install paskal/telegram-banhammer/telegram-banhammer`. On othe
 
 To run directly from the source code, use the `go run ./...` instead of the binary name.
 
-For Docker, use `docker run -it --volume=$(pwd)/ban:/srv/ban paskal/telegram-banhammer:master /srv/telegram-banhammer` instead of the binary name.
+For Docker, use `docker run -it --volume=$(pwd)/ban:/srv/ban ghcr.io/paskal/telegram-banhammer:master /srv/telegram-banhammer` instead of the binary name.
 
 ## How to run
 
